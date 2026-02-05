@@ -26,8 +26,8 @@ import {
 
 export const CARD_LIMITS: Record<string, number> = {
   "Planning (To Do)": 7,
-  "Monitoring (In Progress)": 2,
-  "Controlling (Review)": 3,
+  "Monitoring (In Progress)": 4,
+  "Controlling (Review)": 5,
   "Reflection (Done)": 10,
 };
 
