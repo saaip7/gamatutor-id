@@ -9,7 +9,6 @@ from routes.course_routes import course_bp
 from routes.learningstrat_routes import learningstrat_bp
 from routes.attachments import attachments_bp
 from routes.study_sessions import study_sessions_bp
-# from routes.chatbot_routes import chatbot_bp  # Tidak digunakan lagi karena chatbot pindah ke n8n
 import os
 from utils.db import init_db
 from config import Config
@@ -20,15 +19,18 @@ load_dotenv()
 
 app = Flask(__name__)
 
-# Configure CORS
+# Configure CORS via environment variables
+raw_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:3001")
+origins_list = [origin.strip() for origin in raw_origins.split(",")]
+
 CORS(app, resources={
-  r"/*": {  # Allow all routes, not just /api/*
-      "origins": ["https://self-regulated-learning.vercel.app", "http://localhost:3001", "https://n8n-production-b60a.up.railway.app/webhook/d71e87c6-e1a3-4205-9dcc-81c8ce50f3bb", "http://localhost:3000", "http://localhost:5000", "http://localhost:1213", "https://gamatutor.id", "https://www.gamatutor.id", "https://self-regulated-learning-rose.vercel.app", "https://self-regulated-learning-production.up.railway.app","https://self-regulated-learning-mu.vercel.app","https://s5vl905j-3000.asse.devtunnels.ms"],
-      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-        "allow_headers": ["Content-Type", "Authorization", "Access-Control-Allow-Origin", "Access-Control-Allow-Headers", "Access-Control-Allow-Methods"],
+    r"/*": {
+        "origins": origins_list,
+        "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"],
         "expose_headers": ["Content-Type", "Authorization"],
         "supports_credentials": True,
-        "max_age": 600  # Cache preflight requests for 10 minutes
+        "max_age": 600
     }
 })
 
@@ -48,9 +50,9 @@ app.config['JWT_SECRET_KEY'] = Config.JWT_SECRET_KEY
 app.config['UPLOAD_FOLDER'] = Config.UPLOAD_FOLDER
 
 app.config["JWT_TOKEN_LOCATION"] = ["headers", "cookies"]
-app.config["JWT_COOKIE_CSRF_PROTECT"] = False  # optional: for development only
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 10800 #  # 3 hours
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = 86400 * 7  # 7 days
+app.config["JWT_COOKIE_CSRF_PROTECT"] = False 
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = 10800 # 3 hours
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = 86400 * 7 # 7 days
 
 # Initialize JWTManager
 jwt = JWTManager(app)
@@ -66,48 +68,8 @@ app.register_blueprint(course_bp)
 app.register_blueprint(learningstrat_bp)
 app.register_blueprint(attachments_bp)
 app.register_blueprint(study_sessions_bp)
-# app.register_blueprint(chatbot_bp)  # Tidak digunakan lagi karena chatbot pindah ke n8n
-
-@app.before_request
-def handle_all_before_requests():
-    # # Print routes
-    # print("Available Endpoints:")
-    # for rule in app.url_map.iter_rules():
-    #     methods = ','.join(rule.methods)
-    #     print(f"{rule.endpoint}: {rule.rule} [{methods}]")
-
-    # Handle preflight (OPTIONS)
-    if request.method == "OPTIONS":
-        response = make_response()
-        origin = request.headers.get("Origin")
-
-        allowed_origins = [
-            "http://localhost:3002",
-            "http://localhost:3001",
-            "http://localhost:3000",
-            "http://localhost:5000",
-            "https://self-regulated-learning.vercel.app",
-            "https://self-regulated-learning-rose.vercel.app",
-            "https://n8n-production-b60a.up.railway.app/webhook/d71e87c6-e1a3-4205-9dcc-81c8ce50f3bb",
-            "https://gamatutor.id",
-            "https://www.gamatutor.id",
-            "https://self-regulated-learning-production.up.railway.app",
-            "https://self-regulated-learning-mu.vercel.app",
-            "https://s5vl905j-3000.asse.devtunnels.ms",
-        ]
-
-        if origin in allowed_origins:
-            response.headers.add("Access-Control-Allow-Origin", origin)
-            response.headers.add("Vary", "Origin")
-        else:
-            response.headers.add("Access-Control-Allow-Origin", "null")
-
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
-        response.headers.add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-        response.headers.add("Access-Control-Allow-Credentials", "true")
-        return response
-
 
 if __name__ == "__main__":
-    # Run on a non‑standard port to avoid conflict with other services (e.g., AirTunes)
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Railway will provide the PORT environment variable
+    port = int(os.environ.get("PORT", 5001))
+    app.run(debug=os.getenv("FLASK_DEBUG", "True") == "True", host="0.0.0.0", port=port)
